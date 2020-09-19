@@ -40,7 +40,7 @@ bot.start((ctx) => {
     chats[chats.length - 1].orders = [];
     chats[chats.length - 1].restaurants = [];
     chats[chats.length - 1].collect = '';
-    console.log(chats.length)
+    console.log('New Chat: ' + ctx.message.chat.id)
     ctx.reply('Welcome to the FoodBot. Use /order to announce a group order, /add to add a menu item to the order and /done to close the order and generate a list');
     
 });
@@ -57,7 +57,6 @@ bot.command('order', (ctx) => {
     } else {
         ctx.reply('Please state the restaurant name after /order "restaurant"')
     }
-    console.log('order');
 });
 
 // /add command to add orders to a open order
@@ -71,7 +70,6 @@ bot.command('add', (ctx) => {
     } else {
         ctx.reply("There isn't a open order currently");
     }
-    console.log(ctx.message.chat.id + ' ' + ctx.state.command.args);
 });
 
 // /done command to close a order and have it display a summary
