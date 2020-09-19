@@ -27,6 +27,7 @@ function auth_chat(chat_id) {
     return 0;
 }
 
+// bot object
 const bot = new Telegraf(config.botToken);
 bot.use(commandParts());
 
@@ -40,7 +41,7 @@ bot.start((ctx) => {
     chats[chats.length - 1].restaurants = [];
     chats[chats.length - 1].collect = '';
     console.log(chats.length)
-    ctx.reply('Welcome to the FoodBot. Use /order to announce a group order, /add to add a order to the group and /done to close the order and generate a list');
+    ctx.reply('Welcome to the FoodBot. Use /order to announce a group order, /add to add a menu item to the order and /done to close the order and generate a list');
     
 });
 
@@ -52,9 +53,9 @@ bot.command('order', (ctx) => {
         chats[auth_chat(ctx.message.chat.id)].orders = [];
         chats[auth_chat(ctx.message.chat.id)].restaurants.push(ctx.state.command.args);
         chats[auth_chat(ctx.message.chat.id)].collect = '';
-        ctx.reply(ctx.from.first_name + ' (@' + ctx.from.username + ')' + ' is starting a group order at ' + ctx.state.command.args);
+        ctx.reply(ctx.from.first_name + ' (@' + ctx.from.username + ')' + ' is starting a group order at ' + ctx.state.command.args + '\nPlease add your orders with /add "menu item"');
     } else {
-        ctx.reply('Please state the restaurant name after /order')
+        ctx.reply('Please state the restaurant name after /order "restaurant"')
     }
     console.log('order');
 });
@@ -65,7 +66,7 @@ bot.command('add', (ctx) => {
         if(ctx.state.command.args != ''){
             chats[auth_chat(ctx.message.chat.id)].orders.push(ctx.state.command.args);
         } else {
-            ctx.reply('Please state your order after /add');
+            ctx.reply('Please state your menu item after /add "menu item"');
         }
     } else {
         ctx.reply("There isn't a open order currently");
@@ -91,6 +92,5 @@ bot.command('done', (ctx) => {
 });
 
 // /help command to show a help and statistics of past restaurants
-bot.help((ctx) => ctx.reply('FoodBot Help. Use /order to announce a group order, /add to add a order to the group and /done to close the order and generate a list'))
+bot.help((ctx) => ctx.reply('FoodBot Help. Use /order to announce a group order, /add to add a menu item to the order and /done to close the order and generate a list'))
 bot.launch()
-
