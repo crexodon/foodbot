@@ -1,0 +1,20 @@
+{
+  "name": "foodbot",
+  "version": "1.0.0",
+  "description": "Simple NodeJS based Telegraf bot that helps with organizing group food orders.",
+  "main": "foodbot.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crexodon/foodbot.git"
+  },
+  "author": "crexodon",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/crexodon/foodbot/issues"
+  },
+  "homepage": "https://github.com/crexodon/foodbot#readme",
+  "dependencies": {
+    "telegraf": "^3.38.0",
+    "telegraf-command-parts": "^1.0.3"
+  }
+}
