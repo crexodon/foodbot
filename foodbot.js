@@ -61,6 +61,7 @@ bot.command('order', (ctx) => {
 // /add command to add items to a open order
 bot.command('add', (ctx) => {
     let chat = get_chat(ctx.chat.id);
+    console.log(ctx.state.command.args);
 
     if (chat.is_ordering == 1) {
         if (ctx.state.command.args != '') {
@@ -68,7 +69,7 @@ bot.command('add', (ctx) => {
             chat.orders.push(item);
             ctx.reply(ctx.state.command.args + ' added', Markup.inlineKeyboard([
                 Markup.callbackButton('Delete ' + ctx.state.command.args, 'delete'),
-                Markup.callbackButton('+1 this', 'increment')
+                Markup.callbackButton('+1 ' + ctx.state.command.args, 'increment')
             ]).extra())
         } else {
             ctx.reply('Please state your menu item after /add "menu item"');
@@ -134,17 +135,35 @@ bot.action('delete', (ctx) => {
     let chat = get_chat(ctx.chat.id);
 
     if(chat.orders.some(order => order.includes(ctx.from.id))){
-        let button = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][0].text.split('Delete ');
-        console.log(button[1]);
+        let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][0].text.split('Delete '); //TODO Instead include additional callback data and filter with a bot.on function
+        console.log(input[1]);
 
-        if(chat.orders.some(order => order.includes(button))){
-            console.log('true dat') //TODO Delete item if found in array
+        if(chat.orders.some(order => order.includes(input[1]))){
+            ctx.reply(input[1] + ' deleted');
+            for(var i = 0; i < chat.orders.length; i++){
+                if(chat.orders[i].includes(input[1])){
+                    console.log('delete: ' + i);
+                    chat.orders.splice(i, 1);
+                }
+            }
         }
     }
 })
 
 bot.action('increment', (ctx) => {
+    let chat = get_chat(ctx.chat.id);
+    let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][1].text.split('+1 ');
+    console.log(ctx.update.callback_query.message.reply_markup.inline_keyboard);
 
+        ctx.reply(input[1] + ' +1');
+        for(var i = 0; i < chat.orders.length; i++){
+            if(chat.orders[i].includes(input[1])){
+                console.log('increment: ' + i);
+                chat.orders[i][3] = chat.orders[i][3] + 1;
+            }
+        }
+
+    console.log(chat);
 })
 
 // /help command to show a help and statistics of past restaurants
