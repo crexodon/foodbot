@@ -10,7 +10,7 @@ const chats = [];
 class telegram_chat {
     constructor(chat_id) {
         this.chat_id = chat_id;
-        this.chat_orderer = 0;
+        this.chat_orderer = null;
         this.waiting_for_orderer = 0;
         this.is_ordering = 0;
         this.orders = [];
@@ -18,10 +18,50 @@ class telegram_chat {
     }
 }
 
+class orderItem {
+    constructor(from, itemName) {
+        this.from = from;
+        this.itemName = itemName;
+    }
+}
+
 // Function to check for the right object.
 // Returns the index of the user in chats.
 function get_chat(chat_id) {
     return chats.find(chat => chat.chat_id == chat_id);
+}
+
+function printOrders(orders) {
+    let ordersByName = {};
+    for (const order of orders) {
+        let existing = ordersByName[order.itemName];
+        if (existing) {
+            existing.push(order.from);
+        } else {
+            ordersByName[order.itemName] = [order.from];
+        }
+    }
+
+    let toReturn = [];
+    for (const itemName in ordersByName) {
+        if (Object.hasOwnProperty.call(ordersByName, itemName)) {
+            const fromArray = ordersByName[itemName];
+
+            let countPerUser = {};
+            for (const user of fromArray) {
+                let countForUser = countPerUser[user.id];
+                if (countForUser) {
+                    countForUser.count++;
+                } else {
+                    countPerUser[user.id] = { user: user, count: 1 };
+                }
+            }
+
+            toReturn.push(`${fromArray.length}x ${itemName}\n${Object.values(countPerUser).map(userCount => `    ${userCount.count}x ${(userCount.user.username || userCount.user.first_name)}`).join('\n')}`);
+        }
+    }
+
+    return toReturn.join('\n');
 }
 
 // bot object
@@ -39,33 +79,40 @@ bot.start((ctx) => {
 // /order command to begin a group order and open the orders for the chat
 bot.command('order', (ctx) => {
     let chat = get_chat(ctx.chat.id);
-        chat.chat_orderer = ctx.from.id;
-        chat.waiting_for_orderer = 1;
+
+    if (chat == null) {
+        ctx.reply("run /start first!");
+        return;
+    }
+
+    if (ctx.state.command.args != '') {
+        chat.chat_orderer = ctx.from;
+        chat.waiting_for_orderer = 0;
         chat.is_ordering = 1;
         chat.orders = [];
         chat.restaurant = ctx.state.command.args;
-
-    if (ctx.state.command.args != '') {
-        chat.waiting_for_orderer = 0;
-        ctx.reply(ctx.from.first_name + ' (@' + ctx.from.username + ')' + ' is starting a group order at ' + chat.restaurant + '\nPlease add your orders with /add "menu item"', Markup.inlineKeyboard([
+        ctx.reply(ctx.from.first_name + ' (@' + (ctx.from.username || ctx.from.first_name) + ')' + ' is starting a group order at ' + chat.restaurant + '\nPlease add your orders with /add "menu item"', Markup.inlineKeyboard([
             Markup.callbackButton('Cancel Order', 'cancel')
         ]).extra());
     } else {
-        chat.waiting_for_orderer = 1;
-        ctx.reply("Please reply with the name of the restaurant", Markup.inlineKeyboard([
-            Markup.callbackButton('Cancel Order', 'cancel')
-        ]).extra());
+        ctx.reply("Please add the name of the restaurant to your command");
     }
 });
 
 // /add command to add items to a open order
 bot.command('add', (ctx) => {
     let chat = get_chat(ctx.chat.id);
+
+    if (chat == null) {
+        ctx.reply("run /start first!");
+        return;
+    }
+
     console.log(ctx.state.command.args);
 
     if (chat.is_ordering == 1) {
         if (ctx.state.command.args != '') {
-            let item = [ctx.from.id, ctx.from.username, ctx.state.command.args, 1];
+            let item = new orderItem(ctx.from, ctx.state.command.args);
             chat.orders.push(item);
             ctx.reply(ctx.state.command.args + ' added', Markup.inlineKeyboard([
                 Markup.callbackButton('Delete ' + ctx.state.command.args, 'delete'),
@@ -83,11 +130,16 @@ bot.command('add', (ctx) => {
 bot.command('done', (ctx) => {
     let chat = get_chat(ctx.chat.id);
 
-    if (chat.chat_orderer == ctx.from.username) {
+    if (chat == null) {
+        ctx.reply("run /start first!");
+        return;
+    }
+
+    if (chat.chat_orderer.id == ctx.from.id) {
         chat.is_ordering = 0;
         ctx.reply('Orders are closed');
 
-        let reply = chat.orders.map(order => '- ' + order).join('\n');
+        let reply = printOrders(chat.orders);
 
         ctx.reply(reply);
     } else {
@@ -97,76 +149,78 @@ bot.command('done', (ctx) => {
 
 bot.command('status', (ctx) => {
     let chat = get_chat(ctx.chat.id);
-    if(chat.is_ordering){
-        ctx.reply('Currently @' + chat.chat_orderer + ' is ordering at: ' + chat.restaurant + '\nOrders so far:\n' + chat.orders);
+
+    if (chat == null) {
+        ctx.reply("run /start first!");
+        return;
+    }
+
+    if (chat.is_ordering) {
+        ctx.reply('Currently ' + (chat.chat_orderer.username || chat.chat_orderer.first_name) + ' is ordering at: ' + chat.restaurant + '\nOrders so far:\n' + printOrders(chat.orders));
     } else {
         ctx.reply('Currently no one is ordering. Use /order "restaurant or the inline keyboard to start a order');
-    }
-})
-
-bot.on('text', (ctx) => {
-    let chat = get_chat(ctx.chat.id);
-
-    if(chat.waiting_for_orderer && ctx.message.username == chat.chat_orderer){
-        chat.restaurant = ctx.message;
-        ctx.reply(ctx.from.first_name + ' (@' + ctx.from.username + ')' + ' is starting a group order at ' + chat.restaurant + '\nPlease add your orders with /add "menu item"', Markup.inlineKeyboard([
-            Markup.callbackButton('Cancel Order', 'cancel')
-        ]).extra())
-        chat.waiting_for_orderer = 0;
     }
 })
 
 bot.action('cancel', (ctx) => {
     let chat = get_chat(ctx.chat.id);
 
-    if(chat.chat_orderer == ctx.from.id){
-        chat.chat_orderer = 0;
+    if (chat == null) {
+        ctx.reply("run /start first!");
+        return;
+    }
+
+    if (chat.chat_orderer.id == ctx.from.id) {
+        chat.chat_orderer = null;
         chat.waiting_for_orderer = 0;
         chat.is_ordering = 0;
         chat.orders = [];
         chat.restaurant = '';
-    
+
         ctx.reply('Order has been canceled');
         console.log('Order canceled');
     }
+    ctx.answerCbQuery();
 })
 
 bot.action('delete', (ctx) => {
     let chat = get_chat(ctx.chat.id);
 
-    if(chat.orders.some(order => order.includes(ctx.from.id))){
-        let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][0].text.split('Delete '); //TODO Instead include additional callback data and filter with a bot.on function
-        console.log(input[1]);
-
-        if(chat.orders.some(order => order.includes(input[1]))){
-            ctx.reply(input[1] + ' deleted');
-            for(var i = 0; i < chat.orders.length; i++){
-                if(chat.orders[i].includes(input[1])){
-                    console.log('delete: ' + i);
-                    chat.orders.splice(i, 1);
-                }
-            }
-        }
+    if (chat == null) {
+        ctx.reply("run /start first!");
+        return;
     }
+
+    let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][0].text.split('Delete '); //TODO Instead include additional callback data and filter with a bot.on function
+
+    let item = chat.orders.find(order => order.from.id == ctx.from.id && order.itemName == input[1]);
+    if (item != null) {
+        ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${item.itemName} deleted`);
+        chat.orders.splice(chat.orders.indexOf(item), 1);
+    }
+    ctx.answerCbQuery();
 })
 
 bot.action('increment', (ctx) => {
     let chat = get_chat(ctx.chat.id);
+
+    if (chat == null) {
+        ctx.reply("run /start first!");
+        return;
+    }
+
     let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][1].text.split('+1 ');
     console.log(ctx.update.callback_query.message.reply_markup.inline_keyboard);
 
-        ctx.reply(input[1] + ' +1');
-        for(var i = 0; i < chat.orders.length; i++){
-            if(chat.orders[i].includes(input[1])){
-                console.log('increment: ' + i);
-                chat.orders[i][3] = chat.orders[i][3] + 1;
-            }
-        }
-
+    ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${input[1]} +1`);
+    chat.orders.push(new orderItem(ctx.from, input[1]));
     console.log(chat);
+    ctx.answerCbQuery();
 })
 
 // /help command to show a help and statistics of past restaurants
 bot.help((ctx) => ctx.reply('FoodBot Help:\nQuick Commands: Use /order to announce a group order, /add to add a menu item to the order and /done to close the order and generate a list\n \nInline Keyboard:\nYou also use the inline keyboard and after issuing a command reply with the restaurant name or menu item.'));
 
 bot.launch();
+
+console.log("started");
