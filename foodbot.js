@@ -43,22 +43,20 @@ function printOrders(orders) {
     }
 
     let toReturn = [];
-    for (const itemName in ordersByName) {
-        if (Object.hasOwnProperty.call(ordersByName, itemName)) {
-            const fromArray = ordersByName[itemName];
+    for (const itemName of Object.keys(ordersByName).sort((a, b) => a.localeCompare(b))) {
+        const fromArray = ordersByName[itemName];
 
-            let countPerUser = {};
-            for (const user of fromArray) {
-                let countForUser = countPerUser[user.id];
-                if (countForUser) {
-                    countForUser.count++;
-                } else {
-                    countPerUser[user.id] = { user: user, count: 1 };
-                }
+        let countPerUser = {};
+        for (const user of fromArray) {
+            let countForUser = countPerUser[user.id];
+            if (countForUser) {
+                countForUser.count++;
+            } else {
+                countPerUser[user.id] = { user: user, count: 1 };
             }
-
-            toReturn.push(`${fromArray.length}x ${itemName}\n${Object.values(countPerUser).map(userCount => `    ${userCount.count}x ${(userCount.user.username || userCount.user.first_name)}`).join('\n')}`);
         }
+
+        toReturn.push(`${fromArray.length}x ${itemName}\n${Object.values(countPerUser).map(userCount => `    ${userCount.count}x ${(userCount.user.username || userCount.user.first_name)}`).join('\n')}`);
     }
 
     return toReturn.join('\n');
