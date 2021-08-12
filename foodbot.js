@@ -191,12 +191,16 @@ bot.action('delete', (ctx) => {
 
     let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][0].text.split('Delete '); //TODO Instead include additional callback data and filter with a bot.on function
 
-    let item = chat.orders.find(order => order.from.id == ctx.from.id && order.itemName == input[1]);
-    if (item != null) {
-        ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${item.itemName} deleted`);
-        chat.orders.splice(chat.orders.indexOf(item), 1);
+    if(chat.is_ordering == 1){
+        let item = chat.orders.find(order => order.from.id == ctx.from.id && order.itemName == input[1]);
+        if (item != null) {
+            ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${item.itemName} deleted`);
+            chat.orders.splice(chat.orders.indexOf(item), 1);
+        }
+        ctx.answerCbQuery();
+    } else {
+        ctx.reply('There is no order running');
     }
-    ctx.answerCbQuery();
 })
 
 bot.action('increment', (ctx) => {
@@ -207,13 +211,17 @@ bot.action('increment', (ctx) => {
         return;
     }
 
-    let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][1].text.split('+1 ');
-    console.log(ctx.update.callback_query.message.reply_markup.inline_keyboard);
+    if(chat.is_ordering == 1){
+        let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][1].text.split('+1 ');
+        console.log(ctx.update.callback_query.message.reply_markup.inline_keyboard);
 
-    ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${input[1]} +1`);
-    chat.orders.push(new orderItem(ctx.from, input[1]));
-    console.log(chat);
-    ctx.answerCbQuery();
+        ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${input[1]} +1`);
+        chat.orders.push(new orderItem(ctx.from, input[1]));
+        console.log(chat);
+        ctx.answerCbQuery();
+    }else{
+        ctx.reply('There is no order running');
+    }
 })
 
 // /help command to show a help and statistics of past restaurants
