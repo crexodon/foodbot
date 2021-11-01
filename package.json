@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Simple NodeJS based Telegraf bot that helps with organizing group food orders.",
   "main": "foodbot.js",
+  "scripts": {
+    "start": "node foodbot.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crexodon/foodbot.git"
