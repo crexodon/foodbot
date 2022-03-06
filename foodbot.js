@@ -68,6 +68,11 @@ bot.use(commandParts());
 
 // /start command to start the bot and have it register a chat
 bot.start((ctx) => {
+    if(get_chat(ctx.chat.id) != null){
+        ctx.reply('This chat is already registered!');
+        return;
+    }
+
     let chat = new telegram_chat(ctx.chat.id);
     chats.push(chat);
     console.log('New Chat: ' + ctx.chat.id);
@@ -80,6 +85,11 @@ bot.command('order', (ctx) => {
 
     if (chat == null) {
         ctx.reply("run /start first!");
+        return;
+    }
+
+    if (chat.is_ordering) {
+        ctx.reply("An order is already running! use /add to add something to the running order!");
         return;
     }
 
@@ -168,7 +178,7 @@ bot.action('cancel', (ctx) => {
         return;
     }
 
-    if (chat.chat_orderer.id == ctx.from.id) {
+    if (chat.is_ordering && chat.chat_orderer.id == ctx.from.id) {
         chat.chat_orderer = null;
         chat.waiting_for_orderer = 0;
         chat.is_ordering = 0;
