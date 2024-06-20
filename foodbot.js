@@ -145,11 +145,9 @@ bot.command('done', (ctx) => {
 
     if (chat.chat_orderer.id == ctx.from.id) {
         chat.is_ordering = 0;
-        ctx.reply('Orders are closed');
 
         let reply = printOrders(chat.orders);
-
-        ctx.reply(reply);
+        ctx.reply('Orders are closed: \n'+reply);
     } else {
         ctx.reply("You aren't the person who opened the order");
     }
