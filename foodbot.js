@@ -1,5 +1,4 @@
-const Telegraf = require('telegraf');
-const commandParts = require('telegraf-command-parts');
+const { Telegraf } = require('telegraf');
 const config = require('./config');
 const Markup = require('telegraf/markup');
 
@@ -64,7 +63,6 @@ function printOrders(orders) {
 
 // bot object
 const bot = new Telegraf(config.botToken);
-bot.use(commandParts());
 
 // /start command to start the bot and have it register a chat
 bot.start((ctx) => {
@@ -93,15 +91,15 @@ bot.command('order', (ctx) => {
         return;
     }
 
-    if (ctx.state.command.args != '') {
+    if (ctx.args.length > 0) {
         chat.chat_orderer = ctx.from;
         chat.waiting_for_orderer = 0;
         chat.is_ordering = 1;
         chat.orders = [];
-        chat.restaurant = ctx.state.command.args;
+        chat.restaurant = ctx.args.join(' ');
         ctx.reply(ctx.from.first_name + ' (@' + (ctx.from.username || ctx.from.first_name) + ')' + ' is starting a group order at ' + chat.restaurant + '\nPlease add your orders with /add "menu item"', Markup.inlineKeyboard([
-            Markup.callbackButton('Cancel Order', 'cancel')
-        ]).extra());
+            Markup.button.callback('Cancel Order', 'cancel')
+        ]));
     } else {
         ctx.reply("Please add the name of the restaurant to your command");
     }
@@ -116,16 +114,17 @@ bot.command('add', (ctx) => {
         return;
     }
 
-    console.log(ctx.state.command.args);
+    console.log(ctx.args);
 
     if (chat.is_ordering == 1) {
-        if (ctx.state.command.args != '') {
-            let item = new orderItem(ctx.from, ctx.state.command.args);
+        if (ctx.args.length > 0) {
+            let itemName = ctx.args.join(' ');
+            let item = new orderItem(ctx.from, itemName);
             chat.orders.push(item);
-            ctx.reply(ctx.state.command.args + ' added', Markup.inlineKeyboard([
-                Markup.callbackButton('Delete ' + ctx.state.command.args, 'delete'),
-                Markup.callbackButton('+1 ' + ctx.state.command.args, 'increment')
-            ]).extra())
+            ctx.reply(itemName + ' added', Markup.inlineKeyboard([
+                Markup.button.callback('Delete ' + itemName, 'delete'),
+                Markup.button.callback('+1 ' + itemName, 'increment')
+            ]))
         } else {
             ctx.reply('Please state your menu item after /add "menu item"');
         }
@@ -225,7 +224,11 @@ bot.action('increment', (ctx) => {
         let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][1].text.split('+1 ');
         console.log(ctx.update.callback_query.message.reply_markup.inline_keyboard);
 
-        ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${input[1]} +1`);
+        ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${input[1]} +1`, 
+            Markup.inlineKeyboard([
+                Markup.button.callback('Delete ' + input[1], 'delete'),
+                Markup.button.callback('+1 ' + input[1], 'increment')
+            ]));
         chat.orders.push(new orderItem(ctx.from, input[1]));
         console.log(chat);
         ctx.answerCbQuery();
