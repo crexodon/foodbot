@@ -41,6 +41,7 @@ function printOrders(orders) {
         }
     }
 
+    let totalCount = 0;
     let toReturn = [];
     for (const itemName of Object.keys(ordersByName).sort((a, b) => a.localeCompare(b))) {
         const fromArray = ordersByName[itemName];
@@ -53,12 +54,13 @@ function printOrders(orders) {
             } else {
                 countPerUser[user.id] = { user: user, count: 1 };
             }
+            totalCount++;
         }
 
         toReturn.push(`${fromArray.length}x ${itemName}\n${Object.values(countPerUser).map(userCount => `    ${userCount.count}x ${(userCount.user.username || userCount.user.first_name)}`).join('\n')}`);
     }
 
-    return toReturn.join('\n');
+    return toReturn.join('\n') + `\n\nTotal items: ${totalCount}`;
 }
 
 // bot object
