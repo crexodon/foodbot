@@ -3,14 +3,13 @@ const config = require('./config');
 const Markup = require('telegraf/markup');
 
 // Global array for chat objects.
-const chats = [];
+const chats = {};
 
 // Chat object to store stuff.
 class telegram_chat {
     constructor(chat_id) {
         this.chat_id = chat_id;
         this.chat_orderer = null;
-        this.waiting_for_orderer = 0;
         this.is_ordering = 0;
         this.orders = [];
         this.restaurant = '';
@@ -27,15 +26,23 @@ class orderItem {
 // Function to check for the right object.
 // Returns the index of the user in chats.
 function get_chat(chat_id) {
-    return chats.find(chat => chat.chat_id == chat_id);
+    return chats[chat_id];
+}
+
+function itemNameEquals(a, b) {
+    return a.toUpperCase() == b.toUpperCase();
+}
+
+function getExistingItemName(chat, itemName) {
+    return chat.orders.find(order => itemNameEquals(order.itemName, itemName))?.itemName;
 }
 
 function printOrders(orders) {
     let ordersByName = {};
     for (const order of orders) {
-        const existingKey = Object.keys(ordersByName).find(x => x.toUpperCase() == order.itemName.toUpperCase());
-        if (existingKey) {
-            ordersByName[existingKey].push(order.from);
+        let existing = ordersByName[order.itemName];
+        if (existing) {
+            existing.push(order.from);
         } else {
             ordersByName[order.itemName] = [order.from];
         }
@@ -74,7 +81,7 @@ bot.start((ctx) => {
     }
 
     let chat = new telegram_chat(ctx.chat.id);
-    chats.push(chat);
+    chats[ctx.chat.id] = chat;
     console.log('New Chat: ' + ctx.chat.id);
     ctx.reply('Welcome to the FoodBot. Use /order to announce a group order, /add to add a menu item to the order and /done to close the order and generate a list');
 });
@@ -95,7 +102,6 @@ bot.command('order', (ctx) => {
 
     if (ctx.args.length > 0) {
         chat.chat_orderer = ctx.from;
-        chat.waiting_for_orderer = 0;
         chat.is_ordering = 1;
         chat.orders = [];
         chat.restaurant = ctx.args.join(' ');
@@ -121,6 +127,11 @@ bot.command('add', (ctx) => {
     if (chat.is_ordering == 1) {
         if (ctx.args.length > 0) {
             let itemName = ctx.args.join(' ');
+
+            let existingName = getExistingItemName(chat, itemName);
+            if (existingName)
+                itemName = existingName;
+
             let item = new orderItem(ctx.from, itemName);
             chat.orders.push(item);
             ctx.reply(itemName + ' added', Markup.inlineKeyboard([
@@ -184,7 +195,6 @@ bot.action('cancel', (ctx) => {
 
     if (chat.is_ordering && chat.chat_orderer.id == ctx.from.id) {
         chat.chat_orderer = null;
-        chat.waiting_for_orderer = 0;
         chat.is_ordering = 0;
         chat.orders = [];
         chat.restaurant = '';
@@ -205,8 +215,8 @@ bot.action('delete', (ctx) => {
 
     let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][0].text.split('Delete '); //TODO Instead include additional callback data and filter with a bot.on function
 
-    if(chat.is_ordering == 1){
-        let item = chat.orders.find(order => order.from.id == ctx.from.id && order.itemName.toUpperCase() == input[1].toUpperCase());
+    if (chat.is_ordering == 1) {
+        let item = chat.orders.find(order => order.from.id == ctx.from.id && itemNameEquals(order.itemName, input[1]));
         if (item != null) {
             ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${item.itemName} deleted`);
             chat.orders.splice(chat.orders.indexOf(item), 1);
@@ -225,16 +235,21 @@ bot.action('increment', (ctx) => {
         return;
     }
 
-    if(chat.is_ordering == 1){
-        let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][1].text.split('+1 ');
+    if (chat.is_ordering == 1){
+        let itemName = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][1].text.split('+1 ')[1];
+
+        let existingName = getExistingItemName(chat, itemName);
+        if (existingName)
+            itemName = existingName;
+
         console.log(ctx.update.callback_query.message.reply_markup.inline_keyboard);
 
-        ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${input[1]} +1`, 
+        ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${itemName} +1`, 
             Markup.inlineKeyboard([
-                Markup.button.callback('Delete ' + input[1], 'delete'),
-                Markup.button.callback('+1 ' + input[1], 'increment')
+                Markup.button.callback('Delete ' + itemName, 'delete'),
+                Markup.button.callback('+1 ' + itemName, 'increment')
             ]));
-        chat.orders.push(new orderItem(ctx.from, input[1]));
+        chat.orders.push(new orderItem(ctx.from, itemName));
         console.log(chat);
         ctx.answerCbQuery();
     }else{
