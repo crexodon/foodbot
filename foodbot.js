@@ -33,9 +33,9 @@ function get_chat(chat_id) {
 function printOrders(orders) {
     let ordersByName = {};
     for (const order of orders) {
-        let existing = ordersByName[order.itemName];
-        if (existing) {
-            existing.push(order.from);
+        const existingKey = Object.keys(ordersByName).find(x => x.toUpperCase() == order.itemName.toUpperCase());
+        if (existingKey) {
+            ordersByName[existingKey].push(order.from);
         } else {
             ordersByName[order.itemName] = [order.from];
         }
