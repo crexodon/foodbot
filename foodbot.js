@@ -144,6 +144,11 @@ bot.command('done', (ctx) => {
         return;
     }
 
+    if (!chat.is_ordering) {
+        ctx.reply("There is no order running!");
+        return;
+    }
+
     if (chat.chat_orderer.id == ctx.from.id) {
         chat.is_ordering = 0;
         ctx.reply('Orders are closed');
@@ -203,7 +208,7 @@ bot.action('delete', (ctx) => {
     let input = ctx.update.callback_query.message.reply_markup.inline_keyboard[0][0].text.split('Delete '); //TODO Instead include additional callback data and filter with a bot.on function
 
     if(chat.is_ordering == 1){
-        let item = chat.orders.find(order => order.from.id == ctx.from.id && order.itemName == input[1]);
+        let item = chat.orders.find(order => order.from.id == ctx.from.id && order.itemName.toUpperCase() == input[1].toUpperCase());
         if (item != null) {
             ctx.reply(`${(ctx.from.username || ctx.from.first_name)}: ${item.itemName} deleted`);
             chat.orders.splice(chat.orders.indexOf(item), 1);
