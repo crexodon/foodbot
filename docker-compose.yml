@@ -1,0 +1,5 @@
+services:
+  bot:
+    build: .
+    volumes:
+      - './config.js:/usr/src/app/config.js'
